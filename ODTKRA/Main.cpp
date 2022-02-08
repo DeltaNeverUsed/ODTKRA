@@ -1,8 +1,17 @@
 #include <iostream>
-
-#define WINVER 0x0500
 #include <Windows.h>
 #include <string>
+#include <csignal>
+
+void killODT(int param)
+{
+	LPCWSTR Target_window_Name = L"Oculus Debug Tool";
+	HWND hWindowHandle = FindWindow(NULL, Target_window_Name);
+	if (hWindowHandle != NULL) {
+		SendMessage(hWindowHandle, WM_CLOSE, 0, 0);
+		SwitchToThisWindow(hWindowHandle, true);
+	}
+}
 
 int main()
 {
@@ -38,6 +47,9 @@ int main()
 	HWND PropertGrid = FindWindowEx(hWindowHandle, NULL, L"wxWindowNR", NULL);
 	HWND wxWindow = FindWindowEx(PropertGrid, NULL, L"wxWindow", NULL);
 
+	signal(SIGABRT, killODT);
+	signal(SIGTERM, killODT);
+	signal(SIGBREAK, killODT);
 	// Presses up arrow key and then down every 600 seconds
 	while (true) {
 		SendMessage(wxWindow, WM_KEYDOWN, VK_UP, 0);
