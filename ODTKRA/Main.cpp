@@ -1,6 +1,4 @@
-#include <iostream>
 #include <Windows.h>
-#include <string>
 #include <csignal>
 
 void killODT(int param)
@@ -25,7 +23,7 @@ int main()
 		SwitchToThisWindow(hWindowHandle, true);
 	}
 
-	Sleep(100); // not sure if needed
+	Sleep(500); // not sure if needed
 
 	// Starts ODT
 	ShellExecute(NULL, L"open", L"C:\\Program Files\\Oculus\\Support\\oculus-diagnostics\\OculusDebugTool.exe", NULL, NULL, SW_SHOWDEFAULT);
@@ -44,6 +42,10 @@ int main()
 
 	ShowWindow(hWindowHandle, SW_MINIMIZE);
 
+	Sleep(1000);
+
+	hWindowHandle = FindWindow(NULL, Target_window_Name);
+
 	HWND PropertGrid = FindWindowEx(hWindowHandle, NULL, L"wxWindowNR", NULL);
 	HWND wxWindow = FindWindowEx(PropertGrid, NULL, L"wxWindow", NULL);
 
@@ -54,9 +56,10 @@ int main()
 	while (true) {
 		SendMessage(wxWindow, WM_KEYDOWN, VK_UP, 0);
 		SendMessage(wxWindow, WM_KEYUP, VK_UP, 0);
+		Sleep(50);
 		SendMessage(wxWindow, WM_KEYDOWN, VK_DOWN, 0);
 		SendMessage(wxWindow, WM_KEYUP, VK_DOWN, 0);
-		Sleep(60000);
+		Sleep(600000);
 	}
 
 	return 0;
