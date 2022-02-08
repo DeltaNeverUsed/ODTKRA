@@ -11,6 +11,7 @@ void killODT(int param)
 		SendMessage(hWindowHandle, WM_CLOSE, 0, 0);
 		SwitchToThisWindow(hWindowHandle, true);
 	}
+	Sleep(500);
 }
 
 int main()
@@ -39,7 +40,6 @@ int main()
 	for (int i = 0; i < 7; i++) {
 		keybd_event(VK_DOWN, 0xE0, KEYEVENTF_EXTENDEDKEY | 0, 0);
 		keybd_event(VK_DOWN, 0xE0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0);
-		Sleep(30); // Looks cools :sunglasses:
 	}
 
 	ShowWindow(hWindowHandle, SW_MINIMIZE);
