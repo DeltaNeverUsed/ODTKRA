@@ -5,6 +5,9 @@
 
 void killODT(int param)
 {
+	//Reverse ODT cli commands
+	system("echo service set-pixels-per-display-pixel-override 1 | \"C:\\Program Files\\Oculus\\Support\\oculus-diagnostics\\OculusDebugToolCLI.exe\"");
+
 	LPCWSTR Target_window_Name = L"Oculus Debug Tool";
 	HWND hWindowHandle = FindWindow(NULL, Target_window_Name);
 	if (hWindowHandle != NULL) {
@@ -79,9 +82,9 @@ int main()
 	signal(SIGBREAK, killODT);
 
 	//User friendly information
-	std::cout << "ODTKRA has started\n" << std::endl;
 	std::cout << "ODTKRA uses Oculus Debug Tool to keep your rift alive.\n It is basically a \"advanced macro\", \nwhich means you interacting with the debug tool can cause ODTKRA to fail. \n If ODTKRA stops working then close and reopen it." << std::endl;
 	std::cout << "The Oculus Debug Tool is supposed to be minimized, let it stay so." << std::endl;
+	std::cout << "\nThis program changes the resolution of the Rift CV1 to a very low amount, it will be reversed when program exits or when computer restarts." << std::endl;
 	std::cout << "\nLog:" << std::endl;
 
 	SYSTEMTIME st;
