@@ -39,8 +39,8 @@ void start_ODT(HWND& hWindowHandle, LPCWSTR& Target_window_Name)
 
 void ODT_CLI()
 {
-	//Sets "set-pixels-per-display-pixel-override" to 0.0001 to decrease performance overhead
-	system("echo service set-pixels-per-display-pixel-override 0.0001 | \"C:\\Program Files\\Oculus\\Support\\oculus-diagnostics\\OculusDebugToolCLI.exe\"");
+	//Sets "set-pixels-per-display-pixel-override" to 0.01 to decrease performance overhead
+	system("echo service set-pixels-per-display-pixel-override 0.01 | \"C:\\Program Files\\Oculus\\Support\\oculus-diagnostics\\OculusDebugToolCLI.exe\"");
 
 	//Turn off ASW, we do not need it
 	system("echo server: asw.Off | \"C:\\Program Files\\Oculus\\Support\\oculus-diagnostics\\OculusDebugToolCLI.exe\"");
@@ -96,11 +96,12 @@ int main()
 		Sleep(50);
 		SendMessage(wxWindow, WM_KEYDOWN, VK_DOWN, 0);
 		SendMessage(wxWindow, WM_KEYUP, VK_DOWN, 0);
-		Sleep(600000);
-
+		
 		//Log keeping
 		GetSystemTime(&st);
 		std::cout << "Tracking refreshed at " << st.wHour << ":" << st.wMinute << std::endl;
+
+		Sleep(600000);
 	}
 
 	return 0;
