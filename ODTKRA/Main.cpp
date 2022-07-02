@@ -3,10 +3,13 @@
 #include <csignal>
 #include <stdio.h>
 
+std::string ODTPath = "C:\\Program Files\\Oculus\\Support\\oculus-diagnostics\\";
+
 void killODT(int param)
 {
 	//Reverse ODT cli commands
-	system("echo service set-pixels-per-display-pixel-override 1 | \"C:\\Program Files\\Oculus\\Support\\oculus-diagnostics\\OculusDebugToolCLI.exe\"");
+	std::string temp = "echo service set-pixels-per-display-pixel-override 1 | \"" + ODTPath + "OculusDebugToolCLI.exe\"";
+	system(temp.c_str());
 
 	LPCWSTR Target_window_Name = L"Oculus Debug Tool";
 	HWND hWindowHandle = FindWindow(NULL, Target_window_Name);
@@ -17,10 +20,23 @@ void killODT(int param)
 	Sleep(500);
 }
 
+
+// Check if ODT is running
+// Returns false if not, and true if it is
+bool check_ODT() {
+	LPCWSTR Target_window_Name = L"Oculus Debug Tool";
+	HWND hWindowHandle = FindWindow(NULL, Target_window_Name);
+
+	if (hWindowHandle == NULL)
+		return false;
+	return true;
+}
+
 void start_ODT(HWND& hWindowHandle, LPCWSTR& Target_window_Name)
 {
 	// Starts ODT
-	ShellExecute(NULL, L"open", L"C:\\Program Files\\Oculus\\Support\\oculus-diagnostics\\OculusDebugTool.exe", NULL, NULL, SW_SHOWDEFAULT);
+	std::string tempstr = ODTPath + "OculusDebugTool.exe";
+	ShellExecute(NULL, L"open", (LPCWSTR)std::wstring(tempstr.begin(), tempstr.end()).c_str(), NULL, NULL, SW_SHOWDEFAULT);
 	Sleep(1000); // not sure if needed
 
 	hWindowHandle = FindWindow(NULL, Target_window_Name);
@@ -40,17 +56,32 @@ void start_ODT(HWND& hWindowHandle, LPCWSTR& Target_window_Name)
 void ODT_CLI()
 {
 	//Sets "set-pixels-per-display-pixel-override" to 0.01 to decrease performance overhead
-	system("echo service set-pixels-per-display-pixel-override 0.01 | \"C:\\Program Files\\Oculus\\Support\\oculus-diagnostics\\OculusDebugToolCLI.exe\"");
+	std::string temp = "echo service set-pixels-per-display-pixel-override 0.01 | \"" + ODTPath + "OculusDebugToolCLI.exe\"";
+	system(temp.c_str());
 
 	//Turn off ASW, we do not need it
-	system("echo server: asw.Off | \"C:\\Program Files\\Oculus\\Support\\oculus-diagnostics\\OculusDebugToolCLI.exe\"");
+	temp = "echo server: asw.Off | \"" + ODTPath + "OculusDebugToolCLI.exe\"";
+	system(temp.c_str());
 
 	//Clear screen
 	system("cls");
 }
 
-int main()
+void parse_args(int argc, char* argv[]) {
+	for (int i = 1; i < argc; i++)
+	{
+		if (strcmp(argv[i], "--path"))
+		{
+			ODTPath = std::string(argv[i]) + (argv[i][strlen(argv[i])] == '\\' ? "" : "\\"); // adds \ if user forgot to add it
+			ODTPath.erase(std::remove(ODTPath.begin(), ODTPath.end(), '"'), ODTPath.end()); // removes " from the input
+		}
+	}
+}
+
+int main(int argc, char* argv[])
 {
+
+	parse_args(argc, argv);
 
 	LPCWSTR Target_window_Name = L"Oculus Debug Tool";
 	HWND hWindowHandle = FindWindow(NULL, Target_window_Name);
@@ -71,6 +102,11 @@ int main()
 	start_ODT(hWindowHandle, Target_window_Name);
 
 	Sleep(1000);
+
+	if (check_ODT() == false) {
+		std::cout << "Couldn't start Oculus Debug Tool, please check path: " << ODTPath << std::endl;
+		return 1;
+	}
 
 	hWindowHandle = FindWindow(NULL, Target_window_Name);
 
@@ -96,7 +132,7 @@ int main()
 		Sleep(50);
 		SendMessage(wxWindow, WM_KEYDOWN, VK_DOWN, 0);
 		SendMessage(wxWindow, WM_KEYUP, VK_DOWN, 0);
-		
+
 		//Log keeping
 		GetSystemTime(&st);
 		std::cout << "Tracking refreshed at " << st.wHour << ":" << st.wMinute << std::endl;
