@@ -11,3 +11,8 @@ Instructions:
 - Let ODTKRA do its thing and do not touch the Oculus Debug tool, it is supposed to be minimized.
 
 - Your headset will now not go to sleep, if it does, restart ODTKRA.
+
+Launch Options:
+
+- --path ``--path [Oculus Diagnostics Directory]``
+  - Example ``--path "C:\Program Files\Oculus\Support\oculus-diagnostics"``
