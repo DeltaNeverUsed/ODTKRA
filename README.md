@@ -16,3 +16,7 @@ Launch Options:
 
 - --path ``--path [Oculus Diagnostics Directory]``
   - Example ``--path "C:\Program Files\Oculus\Support\oculus-diagnostics"``
+
+You Can also add launch options to by right clicking on ODTRKA.exe and going into properties and adding it here
+
+![Path Image](/Images/Path.png)
