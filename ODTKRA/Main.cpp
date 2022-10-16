@@ -155,8 +155,10 @@ int main(int argc, char* argv[])
 		for (int i = 0; i < ref_minute; i++)
 		{
 			Sleep(60000);
-			if (GetTickCount() - GetIdleTime() > 54000 && last_time_restarted - GetTickCount() > 1800000) {
+			if (GetTickCount() - GetIdleTime() > 54000 && GetTickCount() - last_time_restarted > 1800000) {
 				start_ODT(hWindowHandle, Target_window_Name); //restart ODT becuase it has a fucking memory leak
+				std::cout << "ODT restarted at " << st.wHour << ":" << st.wMinute << std::endl;
+
 				last_time_restarted = GetTickCount();
 			}
 		}
