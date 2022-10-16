@@ -5,6 +5,20 @@
 
 std::string ODTPath = "C:\\Program Files\\Oculus\\Support\\oculus-diagnostics\\";
 
+DWORD GetIdleTime() //https://stackoverflow.com/questions/20611382/how-to-check-mouse-is-not-moved-from-last-5-seconds
+{
+	LASTINPUTINFO pInput;
+	pInput.cbSize = sizeof(LASTINPUTINFO);
+
+	if (!GetLastInputInfo(&pInput))
+	{
+		// report error, etc. 
+	}
+
+	// return idle time in millisecs
+	return pInput.dwTime;
+}
+
 void killODT(int param)
 {
 	//Reverse ODT cli commands
@@ -42,8 +56,6 @@ void start_ODT(HWND& hWindowHandle, LPCWSTR& Target_window_Name)
 	hWindowHandle = FindWindow(NULL, Target_window_Name);
 	SwitchToThisWindow(hWindowHandle, true);
 
-	Sleep(100); // not sure if needed
-
 	// Goes to the "Bypass Proximity Sensor Check" toggle
 	for (int i = 0; i < 7; i++) {
 		keybd_event(VK_DOWN, 0xE0, KEYEVENTF_EXTENDEDKEY | 0, 0);
@@ -78,6 +90,7 @@ void parse_args(int argc, char* argv[]) {
 	}
 }
 
+int ref_minute = 10;
 int main(int argc, char* argv[])
 {
 
@@ -125,6 +138,8 @@ int main(int argc, char* argv[])
 
 	SYSTEMTIME st;
 
+	DWORD last_time_restarted = GetTickCount();
+
 	// Presses up arrow key and then down every 600 seconds
 	while (true) {
 		SendMessage(wxWindow, WM_KEYDOWN, VK_UP, 0);
@@ -137,7 +152,14 @@ int main(int argc, char* argv[])
 		GetSystemTime(&st);
 		std::cout << "Tracking refreshed at " << st.wHour << ":" << st.wMinute << std::endl;
 
-		Sleep(600000);
+		for (int i = 0; i < ref_minute; i++)
+		{
+			Sleep(60000);
+			if (GetTickCount() - GetIdleTime() > 54000 && last_time_restarted - GetTickCount() > 1800000) {
+				start_ODT(hWindowHandle, Target_window_Name); //restart ODT becuase it has a fucking memory leak
+				last_time_restarted = GetTickCount();
+			}
+		}
 	}
 
 	return 0;
