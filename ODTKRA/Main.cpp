@@ -21,9 +21,11 @@ DWORD GetIdleTime() //https://stackoverflow.com/questions/20611382/how-to-check-
 
 void killODT(int param)
 {
-	//Reverse ODT cli commands
-	std::string temp = "echo service set-pixels-per-display-pixel-override 1 | \"" + ODTPath + "OculusDebugToolCLI.exe\"";
-	system(temp.c_str());
+	if (!param) {
+		//Reverse ODT cli commands
+		std::string temp = "echo service set-pixels-per-display-pixel-override 1 | \"" + ODTPath + "OculusDebugToolCLI.exe\"";
+		system(temp.c_str());
+	}
 
 	LPCWSTR Target_window_Name = L"Oculus Debug Tool";
 	HWND hWindowHandle = FindWindow(NULL, Target_window_Name);
@@ -93,7 +95,6 @@ void parse_args(int argc, char* argv[]) {
 int ref_minute = 10;
 int main(int argc, char* argv[])
 {
-
 	parse_args(argc, argv);
 
 	LPCWSTR Target_window_Name = L"Oculus Debug Tool";
@@ -138,8 +139,6 @@ int main(int argc, char* argv[])
 
 	SYSTEMTIME st;
 
-	DWORD last_time_restarted = GetTickCount();
-
 	// Presses up arrow key and then down every 600 seconds
 	while (true) {
 		SendMessage(wxWindow, WM_KEYDOWN, VK_UP, 0);
@@ -152,22 +151,22 @@ int main(int argc, char* argv[])
 		GetSystemTime(&st);
 		std::cout << "Tracking refreshed at " << st.wHour << ":" << st.wMinute << std::endl;
 
-		for (int i = 0; i < ref_minute; i++)
-		{
-			Sleep(60000);
-			if (GetTickCount() - GetIdleTime() > 54000 && GetTickCount() - last_time_restarted > 1800000) {
-				if (check_ODT()) {
-					std::cout << "ODT restarted at " << st.wHour << ":" << st.wMinute << std::endl;
-
-					last_time_restarted = GetTickCount();
-				}
-				else {
-					killODT(0);
-					Sleep(10000);
-					start_ODT(hWindowHandle, Target_window_Name); //restart ODT becuase it has a fucking memory leak
-				}
-			}
+		int waited = 5000;
+		while (!(GetTickCount() - GetIdleTime() > 54000)) {
+			Sleep(1000);
+			waited += 1000;
 		}
+
+		killODT(1);
+		Sleep(5000);
+		start_ODT(hWindowHandle, Target_window_Name); //restart ODT becuase it has a fucking memory leak
+
+		hWindowHandle = FindWindow(NULL, Target_window_Name);
+
+		PropertGrid = FindWindowEx(hWindowHandle, NULL, L"wxWindowNR", NULL);
+		wxWindow = FindWindowEx(PropertGrid, NULL, L"wxWindow", NULL);
+			
+		Sleep(60000*ref_minute-5000-waited);
 	}
 
 	return 0;
