@@ -3,7 +3,7 @@ Uses the Oculus Debug Tool to keep your rift from going to sleep
 
 I made this to keep my rift from going to sleep while using mm0zct's Oculus_Touch_Steam_Link Driver
 
-Instructions:
+## Instructions:
 - Download the exe file in releases.
 
 - Run exe after starting Touch Link or Driver4VR (depending on what software you are running)
@@ -12,11 +12,14 @@ Instructions:
 
 - Your headset will now not go to sleep, if it does, restart ODTKRA.
 
-Launch Options:
+## Optional Launch Options:
 
-- --path ``--path [Oculus Diagnostics Directory]``
-  - Example ``--path "C:\Program Files\Oculus\Support\oculus-diagnostics"``
+You can add launch options by right-clicking on a shortcut of ODTKRA-MLE.exe and going into properties and adding it in "target"
 
-You Can also add launch options to by right clicking on ODTRKA.exe and going into properties and adding it here
+- --path ```ODTKRA-MLE.exe --path [Oculus Diagnostics Directory]```
+    - Example: ```ODTKRA-MLE.exe --path "C:\Program Files\Oculus\Support\oculus-diagnostics"```
+    - ![Path Image](/Images/Path.jpg)
 
-![Path Image](/Images/Path.png)
+- --leaksize ```ODTKRA-MLE.exe --leaksize [Max memory allowed]```
+    - Example ```ODTKRA-MLE.exe --leaksize 1024```
+    - ![Leak limit](/Images/leak.jpg)
