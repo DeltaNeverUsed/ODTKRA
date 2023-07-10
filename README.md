@@ -23,3 +23,7 @@ You can add launch options by right-clicking on a shortcut of ODTKRA-MLE.exe and
 - --leaksize ```ODTKRA-MLE.exe --leaksize [Max memory allowed]```
     - Example ```ODTKRA-MLE.exe --leaksize 1024```
     - ![Leak limit](/Images/leak.jpg)
+
+# Todo:
+need to stuff into a main thread that keeps track of the user being inactive, then starts off a thread opening the debug tool, and toggleing the switch, then closing
+if the users starts moving the mouse/presses a key on the keyboard, we'd want to kill that thread and try again later

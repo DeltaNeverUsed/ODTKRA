@@ -170,11 +170,14 @@ HWND start_process(std::string path) {
 		Press_key(VK_DOWN, wxWindow);
 		std::cout << "pressed down" << std::endl;
 	}
+	Sleep(1000);
 	Press_key(VK_TAB, wxWindow);
 	std::cout << "pressed tab" << std::endl;
-	//Set "Bypass Proximity Sensor Check" to OFF just in case
+	Sleep(1000);
+
 	Press_key(VK_UP, wxWindow);
 	std::cout << "pressed up" << std::endl;
+	Sleep(500);
 	Press_key(VK_DOWN, wxWindow);
 	std::cout << "pressed down" << std::endl;
 
@@ -223,38 +226,38 @@ int main(int argc, char* argv[]) {
 	int check_leak_timer = 5; 	//check memory leak every X minutes
 	int refresh_tracking_times = 0;
 	while (true) {
-		if (GetTickCount64() >= refresh_loop) {
+		auto tk = GetTickCount64();
+		std::cout << "curr tk: " << tk << ", next tk: " << refresh_loop << ", State: " << (tk >= refresh_loop) << ", what: " << refresh_tracking << std::endl;
+
+		if (tk >= refresh_loop) {
 			refresh_tracking_times++;
 			executed_at(std::to_string(refresh_tracking_times) + " Tracking refresh at: ");
 			HWND wxWindow = get_vxwin(hWindowHandle);
 
-			while (GetForegroundWindow() != hWindowHandle) {
-				SwitchToThisWindow(hWindowHandle, true);
-				Sleep(500);
-			}
-
-			Press_key(VK_UP, wxWindow);
-			std::cout << "pressed up" << std::endl;
-			Sleep(50);
-			Press_key(VK_DOWN, wxWindow);
-			std::cout << "pressed down" << std::endl;
-			ShowWindow(hWindowHandle, SW_MINIMIZE);
-			refresh_loop = GetTickCount64() + minutes(refresh_tracking);
-			Sleep(1000);
-		}
-
-		if (GetTickCount64() >= memory_leak_loop) {
 			if (check_memory_usage() >= memlimit) {
 				executed_at("Memory leak detected, restarting ODT at: ");
 				killODT(0);
 				HWND hWindowHandle = start_process(ODTPath);
-				Sleep(1000);
+				Sleep(3000);
 			}
 			else {
+				SendMessage(wxWindow, WM_KEYDOWN, VK_UP, 0);
+				SendMessage(wxWindow, WM_KEYUP, VK_UP, 0);
+				std::cout << "pressed up" << std::endl;
+				Sleep(500);
+				SendMessage(wxWindow, WM_KEYDOWN, VK_DOWN, 0);
+				SendMessage(wxWindow, WM_KEYUP, VK_DOWN, 0);
+				std::cout << "pressed down" << std::endl;
 				executed_at("No memory leak detected at: ");
 			}
-			memory_leak_loop = GetTickCount64() + minutes(check_leak_timer);
+			
+			//ShowWindow(hWindowHandle, SW_MINIMIZE);
+			refresh_loop = tk + minutes(refresh_tracking);
+			std::cout << "next tk: " << refresh_loop << std::endl;
+			Sleep(1000);
 		}
+
+		Sleep(30000);
 	}
 	return 0;
 }
