@@ -2,73 +2,95 @@
 #include <Windows.h>
 #include <csignal>
 #include <stdio.h>
+#include <psapi.h>
+#include <tlhelp32.h>
+#include <ctime>
+#include <iomanip>
+#include <string>
+#include <thread>
 
 std::string ODTPath = "C:\\Program Files\\Oculus\\Support\\oculus-diagnostics\\";
 
-DWORD GetIdleTime() //https://stackoverflow.com/questions/20611382/how-to-check-mouse-is-not-moved-from-last-5-seconds
-{
-	LASTINPUTINFO pInput;
-	pInput.cbSize = sizeof(LASTINPUTINFO);
-
-	if (!GetLastInputInfo(&pInput))
-	{
-		// report error, etc. 
+int get_pid(const std::wstring& processName) {
+	int pid = 0;
+	// Take a snapshot of all running processes
+	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	if (hSnapshot == INVALID_HANDLE_VALUE) {
+		std::cout << "CreateToolhelp32Snapshot failed: " << GetLastError() << std::endl;
+		return pid;
 	}
 
-	// return idle time in millisecs
-	return pInput.dwTime;
+	// Fill in the size of the structure before using it.
+	PROCESSENTRY32 pe32;
+	pe32.dwSize = sizeof(PROCESSENTRY32);
+
+	// Walk the snapshot of the processes, and for each process,
+	// display information
+	if (Process32First(hSnapshot, &pe32)) {
+		do {
+			if (processName == pe32.szExeFile) {
+				pid = pe32.th32ProcessID;
+				break;
+			}
+		} while (Process32Next(hSnapshot, &pe32));
+	}
+
+	CloseHandle(hSnapshot);
+	return pid;
 }
 
-void killODT(int param)
-{
-	if (!param) {
-		//Reverse ODT cli commands
-		std::string temp = "echo service set-pixels-per-display-pixel-override 1 | \"" + ODTPath + "OculusDebugToolCLI.exe\"";
-		system(temp.c_str());
+tm time_now(bool twelve_hour = true) {
+	time_t now = time(0);
+	tm ltm;
+	localtime_s(&ltm, &now);
+	if (twelve_hour = true) {
+		//convert to 12 hour format
+		if (ltm.tm_hour > 12) {
+			ltm.tm_hour -= 12;
+		}
+		else if (ltm.tm_hour == 0) {
+			ltm.tm_hour = 12;
+		}
 	}
+	return ltm;
+}
 
-	LPCWSTR Target_window_Name = L"Oculus Debug Tool";
+int minutes(int minutes) {
+	return minutes * 60000;
+}
+
+int seconds(int seconds) {
+	return seconds * 1000;
+}
+
+void executed_at(std::string message = "Executed at: ") {
+	tm time = time_now();
+	std::cout << message << std::put_time(&time, "%H:%M:%S") << std::endl;
+}
+
+HWND get_winhandle(LPCWSTR Target_window_Name) {
 	HWND hWindowHandle = FindWindow(NULL, Target_window_Name);
-	if (hWindowHandle != NULL) {
-		SendMessage(hWindowHandle, WM_CLOSE, 0, 0);
-		SwitchToThisWindow(hWindowHandle, true);
+	return hWindowHandle;
+}
+
+HWND get_vxwin(HWND hWindowHandle) {
+	HWND PropertGrid = FindWindowEx(hWindowHandle, NULL, L"wxWindowNR", NULL);
+	HWND wxWindow = FindWindowEx(PropertGrid, NULL, L"wxWindow", NULL);
+	return wxWindow;
+}
+
+void Press_key(int key, HWND wxWindow) {
+	if (wxWindow != NULL) {
+		SendMessage(wxWindow, WM_KEYDOWN, key, 0);
+		SendMessage(wxWindow, WM_KEYUP, key, 0);
 	}
-	Sleep(500);
-}
-
-
-// Check if ODT is running
-// Returns false if not, and true if it is
-bool check_ODT() {
-	LPCWSTR Target_window_Name = L"Oculus Debug Tool";
-	HWND hWindowHandle = FindWindow(NULL, Target_window_Name);
-
-	if (hWindowHandle == NULL)
-		return false;
-	return true;
-}
-
-void start_ODT(HWND& hWindowHandle, LPCWSTR& Target_window_Name)
-{
-	// Starts ODT
-	std::string tempstr = ODTPath + "OculusDebugTool.exe";
-	ShellExecute(NULL, L"open", (LPCWSTR)std::wstring(tempstr.begin(), tempstr.end()).c_str(), NULL, NULL, SW_SHOWDEFAULT);
-	Sleep(1000); // not sure if needed
-
-	hWindowHandle = FindWindow(NULL, Target_window_Name);
-	SwitchToThisWindow(hWindowHandle, true);
-
-	// Goes to the "Bypass Proximity Sensor Check" toggle
-	for (int i = 0; i < 7; i++) {
-		keybd_event(VK_DOWN, 0xE0, KEYEVENTF_EXTENDEDKEY | 0, 0);
-		keybd_event(VK_DOWN, 0xE0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0);
+	else {
+		keybd_event(key, 0, KEYEVENTF_EXTENDEDKEY | 0, 0);
+		keybd_event(key, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0);
 	}
-
-	ShowWindow(hWindowHandle, SW_MINIMIZE);
 }
 
-void ODT_CLI()
-{
+void ODT_CLI() {
 	//Sets "set-pixels-per-display-pixel-override" to 0.01 to decrease performance overhead
 	std::string temp = "echo service set-pixels-per-display-pixel-override 0.01 | \"" + ODTPath + "OculusDebugToolCLI.exe\"";
 	system(temp.c_str());
@@ -76,98 +98,171 @@ void ODT_CLI()
 	//Turn off ASW, we do not need it
 	temp = "echo server: asw.Off | \"" + ODTPath + "OculusDebugToolCLI.exe\"";
 	system(temp.c_str());
+}
 
-	//Clear screen
-	system("cls");
+void killODT(int param) {
+	if (param != 0) {
+		//Reverse ODT cli commands
+		std::cout << "Reversing ODT CLI commands" << std::endl;
+		std::string temp = "echo service set-pixels-per-display-pixel-override 1 | \"" + ODTPath + "OculusDebugToolCLI.exe\"";
+		system(temp.c_str());
+	}
+
+	//Kill ODT
+	int attempts = 100;
+
+	std::cout << "Killing ODT" << std::endl;
+	HWND hWindowHandle;
+	while ((hWindowHandle = get_winhandle((LPCWSTR)L"Oculus Debug Tool")) != NULL) {
+		SwitchToThisWindow(hWindowHandle, true);
+		SendMessage(hWindowHandle, WM_CLOSE, 0, 0);
+		Sleep(15);
+
+		attempts--;
+		if (attempts <= 0)
+			break;
+	}
+
+	std::cout << "ODT Closed!" << std::endl;
+}
+
+bool doKillODTThread = false;
+
+void start_process(std::string path) {
+	if (get_winhandle((LPCWSTR)L"Oculus Debug Tool") != NULL) {
+		killODT(0);
+		Sleep(100);
+	}
+
+	std::string tempstr = path + "OculusDebugTool.exe";
+	std::cout << "Starting: " << tempstr << std::endl;
+	//start exe
+	ShellExecute(NULL, L"open", (LPCWSTR)std::wstring(tempstr.begin(), tempstr.end()).c_str(), NULL, NULL, SW_SHOWDEFAULT);
+	HWND hWindowHandle;
+
+	//wait for window to load
+	std::cout << "Waiting for window to load" << std::endl;
+	while ((hWindowHandle = get_winhandle((LPCWSTR)L"Oculus Debug Tool")) == NULL) {
+		Sleep(100);
+	}
+
+	// Kill the thing if user starts doing stuff
+	if (doKillODTThread) return;
+
+	//system("cls"); //Clear screen
+	std::cout << "ODT window found!" << std::endl;
+	HWND wxWindow = get_vxwin(hWindowHandle);
+
+	std::cout << "Waiting for window to be focused" << std::endl;
+	while (GetForegroundWindow() != hWindowHandle) {
+		SwitchToThisWindow(hWindowHandle, true);
+		Sleep(50);
+	}
+	std::cout << "ODT window focused!" << std::endl;
+
+	// Kill the thing if user starts doing stuff
+	if (doKillODTThread) return;
+
+	for (int i = 0; i < 7; i++) {
+		Press_key(VK_DOWN, wxWindow);
+		std::cout << "pressed down" << std::endl;
+	}
+	Sleep(50);
+	Press_key(VK_TAB, wxWindow);
+	std::cout << "pressed tab" << std::endl;
+	Sleep(50);
+
+	// Kill the thing if user starts doing stuff
+	if (doKillODTThread) return;
+
+	Press_key(VK_UP, wxWindow);
+	std::cout << "pressed toggle up" << std::endl;
+	Sleep(100);
+	Press_key(VK_DOWN, wxWindow);
+	std::cout << "pressed toggle down" << std::endl;
+	Sleep(100);
 }
 
 void parse_args(int argc, char* argv[]) {
-	for (int i = 1; i < argc; i++)
-	{
-		if (strcmp(argv[i], "--path"))
-		{
-			ODTPath = std::string(argv[i]) + (argv[i][strlen(argv[i])] == '\\' ? "" : "\\"); // adds \ if user forgot to add it
-			ODTPath.erase(std::remove(ODTPath.begin(), ODTPath.end(), '"'), ODTPath.end()); // removes " from the input
+	for (int i = 0; i < argc; i++) {
+		if (std::string(argv[i]) == "--path") {
+			ODTPath = std::string(argv[i+1]) + (argv[i+1][strlen(argv[i+1])] == '\\' ? "" : "\\"); 	// adds \ if user forgot to add it
+			ODTPath.erase(std::remove(ODTPath.begin(), ODTPath.end(), '"'), ODTPath.end()); 	// removes " from the input
 		}
 	}
 }
 
-int ref_minute = 10;
-int main(int argc, char* argv[])
-{
+void doToggle() {
+	start_process(ODTPath);
+	if (!doKillODTThread) 
+		Sleep(100);
+	killODT(0);
+}
+
+int main(int argc, char* argv[]) {
 	parse_args(argc, argv);
+	
+	SetWindowPos(GetConsoleWindow(), 0, 900, 0, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 
-	LPCWSTR Target_window_Name = L"Oculus Debug Tool";
-	HWND hWindowHandle = FindWindow(NULL, Target_window_Name);
-
-	// Close ODT if it's already open because we have no idea what is currently selected
-	if (hWindowHandle != NULL) {
-		SendMessage(hWindowHandle, WM_CLOSE, 0, 0);
-		SwitchToThisWindow(hWindowHandle, true);
-	}
-
-	Sleep(500); // not sure if needed
-
-	//Sends commands to the Oculus Debug Tool CLI to decrease performance overhead
-	//Unlikely to do much, but no reason not to.
+	std::cout << "ODT Path: " << ODTPath << std::endl;
 	ODT_CLI();
-
-	//Starts Oculus Debug Tool
-	start_ODT(hWindowHandle, Target_window_Name);
-
-	Sleep(1000);
-
-	if (check_ODT() == false) {
-		std::cout << "Couldn't start Oculus Debug Tool, please check path: " << ODTPath << std::endl;
-		return 1;
-	}
-
-	hWindowHandle = FindWindow(NULL, Target_window_Name);
-
-	HWND PropertGrid = FindWindowEx(hWindowHandle, NULL, L"wxWindowNR", NULL);
-	HWND wxWindow = FindWindowEx(PropertGrid, NULL, L"wxWindow", NULL);
+	SetConsoleTitleA("ODTKRA Memory Leak Edition");
 
 	signal(SIGABRT, killODT);
 	signal(SIGTERM, killODT);
 	signal(SIGBREAK, killODT);
 
-	//User friendly information
-	std::cout << "ODTKRA uses Oculus Debug Tool to keep your rift alive.\n It is basically a \"advanced macro\", \nwhich means you interacting with the debug tool can cause ODTKRA to fail. \n If ODTKRA stops working then close and reopen it." << std::endl;
-	std::cout << "The Oculus Debug Tool is supposed to be minimized, let it stay so." << std::endl;
-	std::cout << "\nThis program changes the resolution of the Rift CV1 to a very low amount, it will be reversed when program exits or when computer restarts." << std::endl;
-	std::cout << "\nLog:" << std::endl;
+	ULONGLONG tracking_refresh_timer = GetTickCount64();
+	ULONGLONG refresh_loop = tracking_refresh_timer;
+	ULONGLONG lastIdle = GetTickCount64();
 
-	SYSTEMTIME st;
 
-	// Presses up arrow key and then down every 600 seconds
+	int refresh_tracking = 9; 	//refresh tracking every X minutes
+	int refresh_tracking_times = 0;
+	bool createdThread = false;
+	std::thread killThread;
+
+	POINT lastCursor;
+	GetCursorPos(&lastCursor);
 	while (true) {
-		SendMessage(wxWindow, WM_KEYDOWN, VK_UP, 0);
-		SendMessage(wxWindow, WM_KEYUP, VK_UP, 0);
-		Sleep(50);
-		SendMessage(wxWindow, WM_KEYDOWN, VK_DOWN, 0);
-		SendMessage(wxWindow, WM_KEYUP, VK_DOWN, 0);
+		auto tk = GetTickCount64();
 
-		//Log keeping
-		GetSystemTime(&st);
-		std::cout << "Tracking refreshed at " << st.wHour << ":" << st.wMinute << std::endl;
+		POINT p;
+		GetCursorPos(&p);
+		// Check if mouse moved
+		if (p.x != lastCursor.x || p.y != lastCursor.y)
+			lastIdle = tk;
+		lastCursor = p;
 
-		int waited = 5000;
-		while (!(GetTickCount() - GetIdleTime() > 54000)) {
-			Sleep(1000);
-			waited += 1000;
+		if (tk - lastIdle < seconds(15))
+		{
+			doKillODTThread = true;
+			refresh_loop = tk;
+		}
+		else
+		{
+			doKillODTThread = false;
+		}
+		
+
+		if (tk >= refresh_loop && tk - lastIdle > seconds(15)) {
+			refresh_tracking_times++;
+			executed_at(std::to_string(refresh_tracking_times) + " Tracking refresh at: ");
+
+
+			// Start another thread that does the refreshing, so that we can kill it if the users does anything
+			if (createdThread)
+				killThread.join();
+
+			killThread = std::thread(doToggle);
+			createdThread = true;
+
+			refresh_loop = tk + minutes(refresh_tracking);
+			std::cout << "next tk: " << refresh_loop << std::endl;
 		}
 
-		killODT(1);
-		Sleep(5000);
-		start_ODT(hWindowHandle, Target_window_Name); //restart ODT becuase it has a fucking memory leak
 
-		hWindowHandle = FindWindow(NULL, Target_window_Name);
-
-		PropertGrid = FindWindowEx(hWindowHandle, NULL, L"wxWindowNR", NULL);
-		wxWindow = FindWindowEx(PropertGrid, NULL, L"wxWindow", NULL);
-			
-		Sleep(60000*ref_minute-5000-waited);
+		Sleep(100);
 	}
-
 	return 0;
 }
