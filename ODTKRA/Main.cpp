@@ -7,9 +7,9 @@
 #include <ctime>
 #include <iomanip>
 #include <string>
+#include <thread>
 
 std::string ODTPath = "C:\\Program Files\\Oculus\\Support\\oculus-diagnostics\\";
-int memlimit = 512;
 
 int get_pid(const std::wstring& processName) {
 	int pid = 0;
@@ -37,25 +37,6 @@ int get_pid(const std::wstring& processName) {
 
 	CloseHandle(hSnapshot);
 	return pid;
-}
-
-double check_memory_usage() {
-	int pid = get_pid(L"OculusDebugTool.exe");
-	HANDLE process = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-	double memory_size_mb = 0;
-
-	if (process == NULL) {
-		std::cout << "Couldn't open process" << std::endl;
-		return 1;
-	}
-
-	PROCESS_MEMORY_COUNTERS pmc;
-	if (GetProcessMemoryInfo(process, &pmc, sizeof(pmc))) {
-		memory_size_mb = (pmc.WorkingSetSize / (1024.0 * 1024.0));
-		std::cout << "PID: " << pid << ", Currently using: " << memory_size_mb << " MB" << std::endl;
-	}
-	CloseHandle(process);
-	return memory_size_mb;
 }
 
 tm time_now(bool twelve_hour = true) {
@@ -117,9 +98,6 @@ void ODT_CLI() {
 	//Turn off ASW, we do not need it
 	temp = "echo server: asw.Off | \"" + ODTPath + "OculusDebugToolCLI.exe\"";
 	system(temp.c_str());
-
-	//Clear screen
-	//system("cls");
 }
 
 void killODT(int param) {
@@ -131,18 +109,31 @@ void killODT(int param) {
 	}
 
 	//Kill ODT
+	int attempts = 100;
+
 	std::cout << "Killing ODT" << std::endl;
 	HWND hWindowHandle;
 	while ((hWindowHandle = get_winhandle((LPCWSTR)L"Oculus Debug Tool")) != NULL) {
-		SendMessage(hWindowHandle, WM_CLOSE, 0, 0);
 		SwitchToThisWindow(hWindowHandle, true);
+		SendMessage(hWindowHandle, WM_CLOSE, 0, 0);
+		Sleep(15);
+
+		attempts--;
+		if (attempts <= 0)
+			break;
 	}
 
-	//system("cls"); //Clear screen
 	std::cout << "ODT Closed!" << std::endl;
 }
 
-HWND start_process(std::string path) {
+bool doKillODTThread = false;
+
+void start_process(std::string path) {
+	if (get_winhandle((LPCWSTR)L"Oculus Debug Tool") != NULL) {
+		killODT(0);
+		Sleep(100);
+	}
+
 	std::string tempstr = path + "OculusDebugTool.exe";
 	std::cout << "Starting: " << tempstr << std::endl;
 	//start exe
@@ -152,8 +143,11 @@ HWND start_process(std::string path) {
 	//wait for window to load
 	std::cout << "Waiting for window to load" << std::endl;
 	while ((hWindowHandle = get_winhandle((LPCWSTR)L"Oculus Debug Tool")) == NULL) {
-		Sleep(500);
+		Sleep(100);
 	}
+
+	// Kill the thing if user starts doing stuff
+	if (doKillODTThread) return;
 
 	//system("cls"); //Clear screen
 	std::cout << "ODT window found!" << std::endl;
@@ -162,28 +156,31 @@ HWND start_process(std::string path) {
 	std::cout << "Waiting for window to be focused" << std::endl;
 	while (GetForegroundWindow() != hWindowHandle) {
 		SwitchToThisWindow(hWindowHandle, true);
-		Sleep(500);
+		Sleep(50);
 	}
 	std::cout << "ODT window focused!" << std::endl;
+
+	// Kill the thing if user starts doing stuff
+	if (doKillODTThread) return;
 
 	for (int i = 0; i < 7; i++) {
 		Press_key(VK_DOWN, wxWindow);
 		std::cout << "pressed down" << std::endl;
 	}
-	Sleep(1000);
+	Sleep(50);
 	Press_key(VK_TAB, wxWindow);
 	std::cout << "pressed tab" << std::endl;
-	Sleep(1000);
+	Sleep(50);
+
+	// Kill the thing if user starts doing stuff
+	if (doKillODTThread) return;
 
 	Press_key(VK_UP, wxWindow);
-	std::cout << "pressed up" << std::endl;
-	Sleep(500);
+	std::cout << "pressed toggle up" << std::endl;
+	Sleep(100);
 	Press_key(VK_DOWN, wxWindow);
-	std::cout << "pressed down" << std::endl;
-
-	ShowWindow(hWindowHandle, SW_MINIMIZE);
-
-	return hWindowHandle;
+	std::cout << "pressed toggle down" << std::endl;
+	Sleep(100);
 }
 
 void parse_args(int argc, char* argv[]) {
@@ -192,10 +189,14 @@ void parse_args(int argc, char* argv[]) {
 			ODTPath = std::string(argv[i+1]) + (argv[i+1][strlen(argv[i+1])] == '\\' ? "" : "\\"); 	// adds \ if user forgot to add it
 			ODTPath.erase(std::remove(ODTPath.begin(), ODTPath.end(), '"'), ODTPath.end()); 	// removes " from the input
 		}
-		if (std::string(argv[i]) == "--leaksize") {
-			memlimit = atoi(argv[i + 1]);
-		}
 	}
+}
+
+void doToggle() {
+	start_process(ODTPath);
+	if (!doKillODTThread) 
+		Sleep(100);
+	killODT(0);
 }
 
 int main(int argc, char* argv[]) {
@@ -203,61 +204,65 @@ int main(int argc, char* argv[]) {
 	
 	SetWindowPos(GetConsoleWindow(), 0, 900, 0, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 
-	if (get_winhandle((LPCWSTR)L"Oculus Debug Tool") != NULL) {
-		killODT(0);
-	}
 	std::cout << "ODT Path: " << ODTPath << std::endl;
-	std::cout << "Max memory allowed: " << memlimit << std::endl;
 	ODT_CLI();
 	SetConsoleTitleA("ODTKRA Memory Leak Edition");
-	HWND hWindowHandle = start_process(ODTPath);
 
 	signal(SIGABRT, killODT);
 	signal(SIGTERM, killODT);
 	signal(SIGBREAK, killODT);
 
 	ULONGLONG tracking_refresh_timer = GetTickCount64();
-	ULONGLONG leak_check_timer = GetTickCount64();
-
 	ULONGLONG refresh_loop = tracking_refresh_timer;
-	ULONGLONG memory_leak_loop = leak_check_timer;
+	ULONGLONG lastIdle = GetTickCount64();
+
 
 	int refresh_tracking = 9; 	//refresh tracking every X minutes
-	int check_leak_timer = 5; 	//check memory leak every X minutes
 	int refresh_tracking_times = 0;
+	bool createdThread = false;
+	std::thread killThread;
+
+	POINT lastCursor;
+	GetCursorPos(&lastCursor);
 	while (true) {
 		auto tk = GetTickCount64();
-		std::cout << "curr tk: " << tk << ", next tk: " << refresh_loop << ", State: " << (tk >= refresh_loop) << ", what: " << refresh_tracking << std::endl;
 
-		if (tk >= refresh_loop) {
+		POINT p;
+		GetCursorPos(&p);
+		// Check if mouse moved
+		if (p.x != lastCursor.x || p.y != lastCursor.y)
+			lastIdle = tk;
+		lastCursor = p;
+
+		if (tk - lastIdle < seconds(15))
+		{
+			doKillODTThread = true;
+			refresh_loop = tk;
+		}
+		else
+		{
+			doKillODTThread = false;
+		}
+		
+
+		if (tk >= refresh_loop && tk - lastIdle > seconds(15)) {
 			refresh_tracking_times++;
 			executed_at(std::to_string(refresh_tracking_times) + " Tracking refresh at: ");
-			HWND wxWindow = get_vxwin(hWindowHandle);
 
-			if (check_memory_usage() >= memlimit) {
-				executed_at("Memory leak detected, restarting ODT at: ");
-				killODT(0);
-				HWND hWindowHandle = start_process(ODTPath);
-				Sleep(3000);
-			}
-			else {
-				SendMessage(wxWindow, WM_KEYDOWN, VK_UP, 0);
-				SendMessage(wxWindow, WM_KEYUP, VK_UP, 0);
-				std::cout << "pressed up" << std::endl;
-				Sleep(500);
-				SendMessage(wxWindow, WM_KEYDOWN, VK_DOWN, 0);
-				SendMessage(wxWindow, WM_KEYUP, VK_DOWN, 0);
-				std::cout << "pressed down" << std::endl;
-				executed_at("No memory leak detected at: ");
-			}
-			
-			//ShowWindow(hWindowHandle, SW_MINIMIZE);
+
+			// Start another thread that does the refreshing, so that we can kill it if the users does anything
+			if (createdThread)
+				killThread.join();
+
+			killThread = std::thread(doToggle);
+			createdThread = true;
+
 			refresh_loop = tk + minutes(refresh_tracking);
 			std::cout << "next tk: " << refresh_loop << std::endl;
-			Sleep(1000);
 		}
 
-		Sleep(30000);
+
+		Sleep(100);
 	}
 	return 0;
 }

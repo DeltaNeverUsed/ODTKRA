@@ -14,16 +14,8 @@ I made this to keep my rift from going to sleep while using mm0zct's Oculus_Touc
 
 ## Optional Launch Options:
 
-You can add launch options by right-clicking on a shortcut of ODTKRA-MLE.exe and going into properties and adding it in "target"
+You can add launch options by right-clicking on a shortcut of ODTKRA.exe and going into properties and adding it in "target"
 
-- --path ```ODTKRA-MLE.exe --path [Oculus Diagnostics Directory]```
-    - Example: ```ODTKRA-MLE.exe --path "C:\Program Files\Oculus\Support\oculus-diagnostics"```
-    - ![Path Image](/Images/Path.jpg)
-
-- --leaksize ```ODTKRA-MLE.exe --leaksize [Max memory allowed]```
-    - Example ```ODTKRA-MLE.exe --leaksize 1024```
-    - ![Leak limit](/Images/leak.jpg)
-
-# Todo:
-need to stuff into a main thread that keeps track of the user being inactive, then starts off a thread opening the debug tool, and toggleing the switch, then closing
-if the users starts moving the mouse/presses a key on the keyboard, we'd want to kill that thread and try again later
+- --path ```ODTKRA.exe --path [Oculus Diagnostics Directory]```
+    - Example: ```ODTKRA.exe --path "C:\Program Files\Oculus\Support\oculus-diagnostics"``` \
+    ![Path Image](/Images/Path.jpg)
