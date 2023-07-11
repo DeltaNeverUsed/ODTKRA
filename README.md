@@ -18,4 +18,4 @@ You can add launch options by right-clicking on a shortcut of ODTKRA.exe and goi
 
 - --path ```ODTKRA.exe --path [Oculus Diagnostics Directory]```
     - Example: ```ODTKRA.exe --path "C:\Program Files\Oculus\Support\oculus-diagnostics"``` \
-    ![Path Image](/Images/Path.jpg)
+    ![Path Image](/Images/path.jpg)
