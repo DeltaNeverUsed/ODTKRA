@@ -155,7 +155,8 @@ void start_process(std::string path) {
 
 	std::cout << "Waiting for window to be focused" << std::endl;
 	while (GetForegroundWindow() != hWindowHandle) {
-		SwitchToThisWindow(hWindowHandle, true);
+		if (doKillODTThread) return;
+		SetForegroundWindow(hWindowHandle);
 		Sleep(50);
 	}
 	std::cout << "ODT window focused!" << std::endl;
