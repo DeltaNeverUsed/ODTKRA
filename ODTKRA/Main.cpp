@@ -140,6 +140,8 @@ void start_process(std::string path) {
 	ShellExecute(NULL, L"open", (LPCWSTR)std::wstring(tempstr.begin(), tempstr.end()).c_str(), NULL, NULL, SW_SHOWDEFAULT);
 	HWND hWindowHandle;
 
+	Sleep(500);
+
 	//wait for window to load
 	std::cout << "Waiting for window to load" << std::endl;
 	while ((hWindowHandle = get_winhandle((LPCWSTR)L"Oculus Debug Tool")) == NULL) {
@@ -193,11 +195,16 @@ void parse_args(int argc, char* argv[]) {
 	}
 }
 
+bool threadRunning;
+
 void doToggle() {
+	threadRunning = true;
 	start_process(ODTPath);
 	if (!doKillODTThread) 
 		Sleep(100);
 	killODT(0);
+
+	threadRunning = false;
 }
 
 int main(int argc, char* argv[]) {
@@ -237,8 +244,10 @@ int main(int argc, char* argv[]) {
 
 		if (tk - lastIdle < seconds(15))
 		{
-			doKillODTThread = true;
-			refresh_loop = tk;
+			if (threadRunning) {
+				doKillODTThread = true;
+				refresh_loop = tk;
+			}
 		}
 		else
 		{
