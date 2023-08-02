@@ -79,6 +79,16 @@ HWND get_vxwin(HWND hWindowHandle) {
 	return wxWindow;
 }
 
+void forceForegroundWindow(HWND hwnd) { // https://stackoverflow.com/questions/19136365/win32-setforegroundwindow-not-working-all-the-time
+	DWORD windowThreadProcessId = GetWindowThreadProcessId(GetForegroundWindow(), LPDWORD(0));
+	DWORD currentThreadId = GetCurrentThreadId();
+	DWORD CONST_SW_SHOW = 5;
+	AttachThreadInput(windowThreadProcessId, currentThreadId, true);
+	BringWindowToTop(hwnd);
+	ShowWindow(hwnd, CONST_SW_SHOW);
+	AttachThreadInput(windowThreadProcessId, currentThreadId, false);
+}
+
 void Press_key(int key, HWND wxWindow) {
 	if (wxWindow != NULL) {
 		SendMessage(wxWindow, WM_KEYDOWN, key, 0);
@@ -114,7 +124,7 @@ void killODT(int param) {
 	std::cout << "Killing ODT" << std::endl;
 	HWND hWindowHandle;
 	while ((hWindowHandle = get_winhandle((LPCWSTR)L"Oculus Debug Tool")) != NULL) {
-		SwitchToThisWindow(hWindowHandle, true);
+		forceForegroundWindow(hWindowHandle);
 		SendMessage(hWindowHandle, WM_CLOSE, 0, 0);
 		Sleep(15);
 
@@ -158,8 +168,8 @@ void start_process(std::string path) {
 	std::cout << "Waiting for window to be focused" << std::endl;
 	while (GetForegroundWindow() != hWindowHandle) {
 		if (doKillODTThread) return;
-		SetForegroundWindow(hWindowHandle);
-		Sleep(50);
+		forceForegroundWindow(hWindowHandle);
+		Sleep(250);
 	}
 	std::cout << "ODT window focused!" << std::endl;
 
