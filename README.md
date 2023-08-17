@@ -8,8 +8,6 @@ I made this to keep my rift from going to sleep while using mm0zct's Oculus_Touc
 
 - Run exe after starting Touch Link or Driver4VR (depending on what software you are running)
 
-- Let ODTKRA do its thing and do not touch the Oculus Debug tool, it is supposed to be minimized.
-
 - Your headset will now not go to sleep, if it does, restart ODTKRA.
 
 ## Optional Launch Options:
